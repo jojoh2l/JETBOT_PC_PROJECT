@@ -1,0 +1,36 @@
+# --- Python Environment ---
+# กรองโฟลเดอร์ .venv ไม่ว่าจะอยู่ใน PC/ หรือ JETBOT/
+**/.venv/
+**/venv/
+**/env/
+
+# --- Python Cache ---
+**/__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# --- Project Data (Large Files) ---
+# ไม่เอาโฟลเดอร์เก็บรูปภาพขึ้น GitHub
+datasets/
+/any/
+**/datasets/
+
+# --- Model Weights & Large Archives ---
+# ไม่เอาไฟล์โมเดลและไฟล์บีบอัดขึ้น (หนักเครื่อง Server)
+*.pth
+*.pt
+*.h5
+*.zip
+*.rar
+*.7z
+
+# --- System Files ---
+.DS_Store
+Thumbs.db
+*.pdf
+*.log
+
+# --- IDE Settings ---
+.vscode/
+.idea/

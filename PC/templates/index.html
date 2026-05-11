@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>Jetbot AI Dashboard</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css')}}">
+</head>
+
+<body>
+    <div class="header">
+        <h1> Jetbot AI Control Center</h1>
+    </div>
+
+    <div class="main-contrainer">
+
+        <div class="video-area">
+            <h3>Main AI Vision (Road + YOLO)</h3>
+            <div class="card-x">
+                <div class="card-main">
+                    <div class="placeholder-video">Road Following (AI)</div>
+                </div>
+                <div class="card-main">
+                    <div class="placeholder-video">YOLO (AI)</div>
+                </div>
+                <div class="card-main">
+                    <div class="placeholder-video">Road Following + YOLO (AI)</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="control-aera">
+            <div class="card">
+                <h3> Tuning Panel</h3>
+                <p>Speed: <input type="range" id="speedSlider" min="0" max="255" value="150"></p>
+                <button class="btn-stop" onclick="stopRobot()">EMERGENCY STOP</button>                
+                <p>Confidence: <input type="range" min="0" max="100"></p>
+                <button class="btn-stop">EMERGENCY STOP</button>
+            </div>
+        </div>
+
+    </div>
+
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+
+</body>
+
+</html>
