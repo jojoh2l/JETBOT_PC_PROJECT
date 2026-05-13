@@ -3,83 +3,121 @@ import csv
 import os
 from pathlib import Path
 
-# --- ตั้งค่า ---
-RAW_DIR      = Path("datasets/raw/road")
-OUT_DIR      = Path("datasets/road_following_80p")
-IMAGES_DIR   = OUT_DIR / "images"
-CSV_PATH     = OUT_DIR / "labels.csv"
-CROP_BOTTOM  = 0.8
-SAVE_SIZE    = (224, 224)
-DISPLAY_SIZE = 448
-WINDOW_NAME  = "Road Labeler | Click=Point | D=Next A=Prev X=Delete Q=Exit"
+# --- ตั้งค่า (Multiplier System) ---
+RAW_DIR       = Path("datasets/raw/road")
+OUT_DIR       = Path("datasets/road_following_80p")
+IMAGES_DIR    = OUT_DIR / "images"
+CSV_PATH      = OUT_DIR / "labels.csv"
 
+CROP_RATIO    = 0.8        # เก็บเฉพาะ 80% ด้านล่าง
+SAVE_SIZE     = (224, 224) # ขนาดที่ AI ใช้เทรน
+DISPLAY_SCALE = 2          # ตัวคูณขยายหน้าจอ (ปรับเป็น 2, 3 ได้ตามชอบ)
+
+# คำนวณขนาดหน้าต่าง UI อัตโนมัติ
+DISPLAY_W = int(SAVE_SIZE[0] * DISPLAY_SCALE)
+DISPLAY_H = int(SAVE_SIZE[1] * DISPLAY_SCALE)
+WINDOW_NAME = f"Road Labeler | Scale x{DISPLAY_SCALE} | D=Next A=Prev X=Delete Q=Exit"
+
+# สร้างโฟลเดอร์ถ้ายังไม่มี
 IMAGES_DIR.mkdir(parents=True, exist_ok=True)
 
+# โหลดข้อมูลเก่าจาก CSV (ถ้ามี)
 labels = {}
 if CSV_PATH.exists():
-    with open(CSV_PATH, newline="") as f:
+    with open(CSV_PATH, newline='') as f:
         for row in csv.DictReader(f):
             labels[row["filename"]] = (float(row["x"]), float(row["y"]))
 
+# ดึงรายชื่อภาพดิบทั้งหมด
 all_images = sorted(list(RAW_DIR.glob("*/*.jpg")))
 if not all_images:
-    print(f"ไม่พบภาพใน {RAW_DIR}"); exit()
+    print(f"❌ ไม่พบภาพใน {RAW_DIR}"); exit()
 
 current_idx = 0
 
 def save_csv():
-    """บันทึกข้อมูลลงไฟล์ CSV ทันที"""
+    """บันทึก labels ทั้งหมดลง CSV"""
     with open(CSV_PATH, "w", newline="") as f:
         writer = csv.DictWriter(f, fieldnames=["filename", "x", "y"])
         writer.writeheader()
-        for fname, (x, y) in sorted(labels.items()):
-            writer.writerow({"filename": fname, "x": x, "y": y})
+        for fname, (nx, ny) in sorted(labels.items()):
+            writer.writerow({"filename": fname, "x": nx, "y": ny})
 
-def process_and_draw(img_path):
+def process_frame(img_path):
+    """ทำ Preprocessing: Crop -> Resize -> Scale for Display"""
     img = cv2.imread(str(img_path))
-    h, w = img.shape[:2]
-    cropped = img[int(h*(1-CROP_BOTTOM)):, :]
-    resized = cv2.resize(cropped, SAVE_SIZE)
-    display = cv2.resize(resized, (DISPLAY_SIZE, DISPLAY_SIZE))
+    if img is None: return None, None
     
     fname = img_path.name
-    cv2.putText(display, f"{current_idx+1}/{len(all_images)}: {fname}", (10, 20), 
-                cv2.FONT_HERSHEY_SIMPLEX, 0.4, (255, 255, 255), 1)
+    h, w = img.shape[:2]
+    # Crop 80% ล่าง
+    start_y = int(h * (1 - CROP_RATIO))
+    cropped = img[start_y:, :]
+    
+    # Resize เป็นขนาดเทรน (224x224)
+    resized = cv2.resize(cropped, SAVE_SIZE)
+    
+    # ขยายเพื่อโชว์บนหน้าจอ UI
+    display = cv2.resize(resized, (DISPLAY_W, DISPLAY_H))
     
     if fname in labels:
-        x_n, y_n = labels[fname]
-        px, py = int(x_n * DISPLAY_SIZE), int(y_n * DISPLAY_SIZE)
-        cv2.circle(display, (px, py), 5, (0, 255, 0), -1) # เปลี่ยนเป็นสีเขียวเมื่อเซฟแล้ว
-        cv2.putText(display, "SAVED", (DISPLAY_SIZE-60, 20), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
+        nx, ny = labels[fname]
+        px, py = int(nx * DISPLAY_W), int(ny * DISPLAY_H)
+        
+        # 1. วาดเส้นจากพิกัดที่คลิก ไปยัง กึ่งกลางล่างของจอ (สีฟ้า)
+        cv2.line(display, (px, py), (int(DISPLAY_W / 2), DISPLAY_H), (255, 255, 0), 2)
+
+        cv2.line(display, (int(0), int(DISPLAY_H / 2)), (int(DISPLAY_W), int(DISPLAY_H / 2)), (255, 255, 0), 1)
+        cv2.line(display, (int(DISPLAY_W / 2), int(0)), (int(DISPLAY_W / 2), int(DISPLAY_H)), (255, 255, 0), 1)
+        
+        cv2.circle(display, (px, py), 4, (0, 0, 225), -1)
+
+        # --- ส่วนที่เพิ่มเข้ามา: แสดงพิกัด x, y ข้างจุด ---
+        cv2.putText(display, f"{nx:.3f}, {ny:.3f}", (px - 50, py - 20), 
+                    cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 225), 2)
+        
+        cv2.putText(display, "SAVED", (DISPLAY_W-80, 30), 
+                    cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 0), 2)
         
     return display, resized
 
 def on_mouse(event, x, y, flags, param):
+    """คลิกเมาส์เพื่อ Label"""
+    global current_idx
     if event == cv2.EVENT_LBUTTONDOWN:
         fname = all_images[current_idx].name
-        labels[fname] = (x / DISPLAY_SIZE, y / DISPLAY_SIZE)
-        _, resized = process_and_draw(all_images[current_idx])
+        # Normalize พิกัดตามขนาดหน้าจอที่โชว์จริง
+        labels[fname] = (x / DISPLAY_W, y / DISPLAY_H)
+        
+        # บันทึกภาพ 224x224
+        _, resized = process_frame(all_images[current_idx])
         cv2.imwrite(str(IMAGES_DIR / fname), resized)
-        save_csv() # เซฟทันที
+        save_csv()
+        print(f"✅ Saved: {fname} at ({labels[fname][0]:.3f}, {labels[fname][1]:.3f})")
 
 cv2.namedWindow(WINDOW_NAME)
 cv2.setMouseCallback(WINDOW_NAME, on_mouse)
 
 while True:
-    display, _ = process_and_draw(all_images[current_idx])
-    cv2.imshow(WINDOW_NAME, display)
-    key = cv2.waitKey(30) & 0xFF
+    p = all_images[current_idx]
+    display, _ = process_frame(p)
     
+    if display is not None:
+        header = f"[{current_idx+1}/{len(all_images)}] {p.name}"
+        cv2.putText(display, header, (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 255), 2)
+        cv2.imshow(WINDOW_NAME, display)
+
+    key = cv2.waitKey(1) & 0xFF
     if key == ord('q'): break
     elif key == ord('d'): current_idx = (current_idx + 1) % len(all_images)
     elif key == ord('a'): current_idx = (current_idx - 1) % len(all_images)
-    elif key == ord('x'):
-        fname = all_images[current_idx].name
+    elif key == ord('x'): # ลบข้อมูล
+        fname = p.name
         if fname in labels:
             del labels[fname]
-            img_file = IMAGES_DIR / fname
-            if img_file.exists(): img_file.unlink()
-            save_csv() # เซฟทันทีที่ลบ
-            print(f"ลบข้อมูล: {fname}")
+            target_file = IMAGES_DIR / fname
+            if target_file.exists(): target_file.unlink()
+            save_csv()
+            print(f"🗑️ Deleted Label & Image: {fname}")
 
 cv2.destroyAllWindows()
