@@ -18,7 +18,7 @@ last_command_time = time.time()
 def gstreamer_pipeline():
     return (
         "nvarguscamerasrc ! video/x-raw(memory:NVMM), width=(int)816, height=(int)616, format=(string)NV12, framerate=(fraction)21/1 ! "
-        "nvvidconv flip-method=0 ! video/x-raw, width=(int)320, height=(int)240, format=(string)BGRx ! "
+        "nvvidconv flip-method=0 ! video/x-raw, width=(int)640, height=(int)480, format=(string)BGRx ! "
         "videoconvert ! video/x-raw, format=(string)BGR ! appsink drop=True"
     )
 
