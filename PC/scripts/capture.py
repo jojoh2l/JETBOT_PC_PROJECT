@@ -18,14 +18,15 @@ def check_jetbot_connection(ip, port, timeout=2):
 print("=== Jetbot Data Capture Tool (Socket Safety) ===")
 print("1: Road Following (เก็บใน datasets/raw/road)")
 print("2: Collision Avoidance (เก็บใน datasets/raw/collision)")
+print("3: Collision Avoidance (เก็บใน datasets/raw/YOLO)")
 
 try:
-    choice = input("กรุณาเลือกประเภท (1 หรือ 2) หรือกด Ctrl+C เพื่อออก: ")
+    choice = input("กรุณาเลือกประเภท (1 หรือ 2 หรือ 3) หรือกด Ctrl+C เพื่อออก: ")
 except KeyboardInterrupt:
     print("\nยกเลิกโดยผู้ใช้")
     sys.exit()
 
-task_map = {"1": "road", "2": "collision"}
+task_map = {"1": "road", "2": "collision", "3": "YOLO"}
 task_name = task_map.get(choice)
 
 if not task_name:
